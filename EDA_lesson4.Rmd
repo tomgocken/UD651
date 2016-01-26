@@ -1,0 +1,284 @@
+---
+title: "EDA Lesson 4"
+author: "Tom Gocken"
+date: "Sunday, January 24, 2016"
+output:
+  word_document:
+    fig_width: 7
+---
+
+### Scatterplots
+```{r}
+# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/EDA_Course_Materials.zip
+# Set directory, load data and ggplot2 library
+
+setwd("C:/Projects/UD651")
+list.files()
+pf <- read.csv('pseudo_facebook.tsv', sep = '\t')
+library(ggplot2)
+
+qplot(x = age, y = friend_count, data = pf)
+
+# Alternative syntax
+qplot(age, friend_count, data = pf)
+
+# ggplot syntax
+ggplot(aes(x = age, y = friend_count), data = pf) + geom_point()
+summary(pf$age)
+
+# Limit x axis range
+ggplot(aes(x = age, y = friend_count), data = pf) + geom_point() + xlim(13,90)
+```
+
+### Overplotting
+```{r}
+# Reduce overplotting with alpha where 1 graph point equal to 20 data points
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_point(alpha = 1/20)  + 
+  xlim(13,90)
+
+# Add jitter
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_jitter(alpha = 1/20)  + 
+  xlim(13,90)
+
+```
+
+### coord_trans
+```{r}
+# Square root transformation
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_point(alpha = 1/20)  + 
+  xlim(13,90) +
+  coord_trans(y = 'sqrt')
+
+# Jitter age, > 0 only
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_point(alpha = 1/20, position = position_jitter(h = 0))  + 
+  xlim(13,90) +
+  coord_trans(y = 'sqrt')
+```
+
+### Alpha and Jitter
+```{r}
+names(pf)
+
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  geom_point()
+
+# Add jitter
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  geom_jitter() +
+  xlim(13,90)
+
+# Add alpha
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  geom_jitter(alpha = 1/10) +
+  xlim(13,90)
+
+# Alt jitter syntax, sqrt transformation
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  geom_point(alpha = 1/10, position = position_jitter(h = 0)) +
+  xlim(13,90) +
+  coord_trans(y = 'sqrt')
+```
+
+### Conditional Means
+```{r}
+# install.packages('dplyr')
+library(dplyr)
+
+age_groups <- group_by(pf, age)
+
+pf.fc_by_age <- summarise(age_groups,
+          friend_count_mean = mean(friend_count),
+          friend_count_median = median(friend_count),
+          n = n())
+
+pf.fc_by_age <- arrange(pf.fc_by_age, age)
+
+head(pf.fc_by_age)
+
+# Alternative syntax, note: %.% equivalent to %>%
+pf.fc_by_age <- pf %.% 
+  group_by(age) %.%
+  summarise(friend_count_mean = mean(friend_count),
+          friend_count_median = median(friend_count),
+          n = n()) %.%
+  arrange(age)
+
+head(pf.fc_by_age)
+
+# geom_line on summarized values
+ggplot(aes(x= age, y = friend_count_mean), data = pf.fc_by_age) +
+  geom_line()
+```
+
+### Overlaying Summaries with Raw Data
+```{r}
+
+# Display raw data and mean
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  geom_point(alpha = 0.05, 
+             position = position_jitter(h = 0),
+             color = 'orange') +
+  xlim(13,90) +
+  coord_trans(y = 'sqrt') +
+  geom_line(stat = 'summary', fun.y = mean)
+
+# Add quantiles
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  geom_point(alpha = 0.05, 
+             position = position_jitter(h = 0),
+             color = 'orange') +
+  xlim(13,90) +
+  coord_trans(y = 'sqrt') +
+  geom_line(stat = 'summary', fun.y = mean) +
+  geom_line(stat = 'summary', fun.y = quantile, fun.args=list(probs=0.1),
+            linetype = 2, color = 'blue') +
+  geom_line(stat = 'summary', fun.y = quantile, fun.args=list(probs=0.5), # = median
+            color = 'blue') +
+  geom_line(stat = 'summary', fun.y = quantile, fun.args=list(probs=0.9),
+            linetype = 2, color = 'blue')
+
+
+# Use coord_cartesian to zoom in
+ggplot(aes(x = age, y = friendships_initiated), data = pf) +
+  coord_cartesian(xlim = c(13, 70), ylim = c(0, 1000)) +
+  geom_point(alpha = 0.05, 
+             position = position_jitter(h = 0),
+             color = 'orange') +
+  geom_line(stat = 'summary', fun.y = mean) +
+  geom_line(stat = 'summary', fun.y = quantile, fun.args=list(probs=0.1),
+            linetype = 2, color = 'blue') +
+  geom_line(stat = 'summary', fun.y = quantile, fun.args=list(probs=0.5), # = median
+            color = 'blue') +
+  geom_line(stat = 'summary', fun.y = quantile, fun.args=list(probs=0.9),
+            linetype = 2, color = 'blue')
+```
+
+### Correlation
+```{r}
+cor.test(pf$age, pf$friend_count, method = 'pearson')
+
+# Alt syntax
+with(pf, cor.test(age, friend_count, method = 'pearson'))
+```
+
+### Correlation on Subsets
+```{r}
+with(subset(pf, age <= 70), cor.test(age, friend_count)) # method = 'peason' is default
+```
+
+### Create Scatterplots
+```{r}
+ggplot(aes(x = www_likes_received, likes_received), data = pf) +
+  geom_point()
+```
+
+### Strong Correlations
+```{r}
+# Limit range using 95% quantiles, add line for correlation coefficient
+ggplot(aes(x = www_likes_received, likes_received), data = pf) +
+  geom_point() +
+  xlim(0, quantile(pf$www_likes_received, 0.95)) +
+  ylim(0, quantile(pf$likes_received, 0.95)) +
+  geom_smooth(method = 'lm', color = 'red')
+
+cor.test(pf$www_likes_received, pf$likes_received)
+# High correlation not meaningful since www_likes_received is a subset of likes_received
+```
+
+### More Caution with Correlation
+```{r}
+# install.packages('alr3')
+library(alr3)
+data(Mitchell)
+# ?Mitchell
+# Mitchell soil temperature
+# Description: Data collected by Kenneth G. Hubbard on soil temperature at 20 cm depth 
+# in Mitchell, Nebraska for 17 years (1976-1992) The variable month is the month number.
+
+ggplot(data = Mitchell, aes(x = Month, y = Temp)) +
+  geom_point()
+
+# Alt syntax
+qplot(data = Mitchell, Month, Temp)
+```
+
+### Noisy Scatterplots
+```{r}
+
+```
+
+### Making Sense of Data
+```{r}
+ggplot(data = Mitchell, aes(x = Month, y = Temp)) +
+  geom_point() +
+  scale_x_discrete(breaks = seq(0, 203, 12))
+```
+
+### A New Perspective
+```{r}
+# Stretch horizontal axis to reveal cyclic pattern
+```
+
+### Understanding Noise Age to Age Months
+```{r}
+ggplot(aes(x = age, y = friend_count_mean), data = pf.fc_by_age) +
+  geom_line()
+
+head(pf.fc_by_age, 10)
+pf.fc_by_age[17:19, ]
+
+pf$age_with_months <- pf$age + (12 - pf$dob_month) / 12
+```
+
+### Age with Months Means
+```{r}
+library(dplyr)
+pf.fc_by_age_months <- pf %>%
+  group_by(age_with_months) %>%
+  summarise(friend_count_mean = mean(friend_count),
+            friend_count_median = median(friend_count),
+            n = n()) %>%
+  arrange(age_with_months)
+
+head(pf.fc_by_age_months)
+```
+
+### Noise in Conditional Means
+```{r}
+ggplot(aes(x = age, y = friend_count_mean), data = pf.fc_by_age) +
+  geom_line()
+
+# Revise using age_with_months, subset by age_with_months < 71
+ggplot(aes(x = age_with_months, y = friend_count_mean), 
+       data = subset(pf.fc_by_age_months, age_with_months < 71)) +
+  geom_line()
+```
+
+### Smoothing Conditional Means
+```{r}
+# Save each plot to a variable, add smoothing lines, plot in one column
+# Reducing number of bins reduces noise but may also leave out important details
+# bias / variance trade-off
+
+p1 <- ggplot(aes(x = age, y = friend_count_mean), 
+             data = subset(pf.fc_by_age, age < 71)) +
+  geom_line() +
+  geom_smooth()
+
+p2 <- ggplot(aes(x = age_with_months, y = friend_count_mean), 
+       data = subset(pf.fc_by_age_months, age_with_months < 71)) +
+  geom_line() +
+  geom_smooth()
+
+p3 <- ggplot(aes(x = round(age / 5) * 5, y = friend_count), 
+       data = subset(pf, age < 71)) +
+  geom_line(stat = 'summary', fun.y = mean)
+
+library(gridExtra)
+grid.arrange(p2, p1, p3, ncol = 1)
+```
+
