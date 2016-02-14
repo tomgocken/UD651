@@ -1,0 +1,242 @@
+---
+title: "EDA Lesson 5"
+author: "Tom Gocken"
+date: "Friday, January 29, 2016"
+output: word_document
+---
+
+### Third Qualitative Variable
+```{r}
+# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/pseudo_facebook.tsv
+# Set directory, load data and ggplot2 package
+setwd("C:/Projects/UD651")
+list.files()
+pf <- read.csv('pseudo_facebook.tsv', sep = '\t')
+library(ggplot2)
+
+# Boxplot with mean
+ggplot(aes(x = gender, y = age),
+       data = subset(pf, !is.na(gender))) + geom_boxplot() +
+  stat_summary(fun.y = mean, geom = 'point', shape = 4)
+
+# Friend count by age, gender
+ggplot(aes(x = age, y = friend_count),
+       data = subset(pf, !is.na(gender))) +
+  geom_line(aes(color = gender), stat = 'summary', fun.y = median)
+
+# Alt method by creating dataset in dplyr, chaining functions with %>%
+library(dplyr)
+pf.fc_by_age_gender <- pf %>%
+  filter(!is.na(gender)) %>%
+  group_by(age, gender) %>%
+  summarise(mean_friend_count = mean(friend_count),
+            median_friend_count = median(friend_count),
+            n = n()) %>%
+  ungroup() %>% # summarise ungroups gender layer, need to further ungroup age layer
+  arrange(age)
+```
+
+### Plotting Conditional Summaries
+```{r}
+ggplot(aes(x = age, y = median_friend_count),
+       data = pf.fc_by_age_gender) +
+  geom_line(aes(color = gender))
+```
+
+### Thinking in Ratios
+```{r}
+# Creating dataset allows inspection of variables or further operations
+```
+
+### Reshaping Data
+```{r}
+# install.packages('reshape2')
+library(reshape2)
+
+pf.fc_by_age_gender.wide <- dcast(pf.fc_by_age_gender,
+                                  age ~ gender,
+                                  value.var = 'median_friend_count')
+
+head(pf.fc_by_age_gender.wide)
+```
+
+### Ratio Plot
+```{r}
+# Plot females to males
+ggplot(aes(x = age, y = female / male),
+       data = pf.fc_by_age_gender.wide) +
+  geom_line() +
+  geom_hline(yintercept = 1, alpha = 0.3, linetype = 2)
+```
+
+### Third Quantitative Variable
+```{r}
+pf$year_joined <- floor(2014 - pf$tenure / 365)
+```
+
+### Cut a Variable
+```{r}
+summary(pf$year_joined)
+table(pf$year_joined)
+
+pf$year_joined.bucket <- cut(pf$year_joined,
+                             c(2004, 2009, 2011, 2012, 2014))
+```
+
+### Plotting It All Together
+```{r}
+table(pf$year_joined.bucket, useNA = 'ifany')
+
+ggplot(aes(x = age, y = friend_count),
+       data = subset(pf, !is.na(year_joined.bucket))) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary', fun.y = median)
+```
+
+### Plot the Grand Mean
+```{r}
+ggplot(aes(x = age, y = friend_count),
+       data = subset(pf, !is.na(year_joined.bucket))) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary', fun.y = mean) +
+  geom_line(stat = 'summary', fun.y = mean, linetype = 2)
+```
+
+### Friending Rate
+```{r}
+with(subset(pf, tenure >= 1), summary(friend_count / tenure))
+```
+
+### Friendships Initiated
+```{r}
+ggplot(aes(x = tenure, y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary',
+            fun.y = mean)
+```
+
+### Bias Variance Trade off Revisited
+```{r}
+library(gridExtra)
+
+p1 <- ggplot(aes(x = tenure, y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary', fun.y = mean)
+
+p2 <- ggplot(aes(x = 7 * round(tenure/7), y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary', fun.y = mean)
+
+p3 <- ggplot(aes(x = 30 * round(tenure/7), y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary', fun.y = mean)
+
+p4 <- ggplot(aes(x = 90 * round(tenure/7), y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary', fun.y = mean)
+
+# Using geom_smooth
+ggplot(aes(x = tenure, y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_smooth(aes(color = year_joined.bucket))
+
+grid.arrange(p1, p2, p3, p4, ncol = 1)
+```
+
+### Introducing the Yogurt Dataset
+```{r}
+# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/yogurt.csv
+```
+
+### Histograms Revisited
+```{r}
+setwd("C:/Projects/UD651")
+yo <- read.csv('yogurt.csv')
+str(yo)
+
+# Change id from int ot factor
+yo$id <- factor(yo$id)
+str(yo)
+
+qplot(data = yo, x = price, fill = I('#F79420'))
+```
+
+### Number of Purchases
+```{r}
+summary(yo)
+length(unique(yo$price))
+table(yo$price)
+
+str(yo)
+
+yo <- transform(yo, all.purchases = strawberry + blueberry + pina.colada + plain + mixed.berry)
+```
+
+### Prices Over Time
+```{r}
+qplot(x = all.purchases, data = yo, binwidth = 1, fill = I('#099DD9'))
+
+ggplot(aes(x = time, y = price), data = yo) +
+  geom_jitter(alpha = 1/4, shape = 21, fill = I('#F79420'))
+```
+
+### Looking at Samples of Households
+```{r}
+# Set seed for reproducible results
+set.seed(4230)
+# Sample 16 households
+sample.ids <- sample(levels(yo$id), 16)
+
+# Plot sample household purchases, facet by household
+# %in% loops over ids
+ggplot(aes(x = time, y = price),
+       data = subset(yo, id %in% sample.ids)) +
+  facet_wrap( ~ id) + 
+  geom_line() + 
+  geom_point(aes(size = all.purchases), pch = 1)
+```
+
+### Scatterplot Matrices
+```{r}
+# install.packages(GGally)
+library(GGally)
+theme_set(theme_minimal(20))
+
+# Set seed for reproducible results
+set.seed(1836)
+pf_subset <- pf[, c(2:15)] # variables of interest
+names(pf_subset)
+ggpairs(pf_subset[sample.int(nrow(pf_subset), 1000), ])
+```
+
+### Even More Variables
+```{r}
+# Micro-array/Gene Expression Data
+# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/nci.tsv
+setwd("C:/Projects/UD651")
+nci <- read.table('nci.tsv')
+# Rename columns 1 to 64 for simpler labeling
+colnames(nci) <- c(1:64)
+```
+
+### Heat Maps
+```{r}
+# Melt data to long format
+library(reshape2)
+nci.long.samp <- melt(as.matrix(nci[1:200, ]))
+names(nci.long.samp) <- c('gene', 'case', 'value')
+head(nci.long.samp)
+
+# Plot first 200 genes
+ggplot(aes(y = gene, x = case, fill = value),
+       data = nci.long.samp) +
+  geom_tile() +
+  scale_fill_gradientn(colors = colorRampPalette(c('blue', 'red'))(100))
+#  scale_fill_gradientn(colors = colorRampPallet(c('blue', 'red')))
+#  scale_fill_gradientn(colors = heat.colors(10))#colorRampPallet(c('blue', 'red'))(100))
+```
