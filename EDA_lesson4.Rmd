@@ -3,14 +3,15 @@ title: "EDA Lesson 4"
 author: "Tom Gocken"
 date: "Sunday, January 24, 2016"
 output:
+  html_document: default
   word_document:
     fig_width: 7
 ---
 
 ### Scatterplots
 ```{r}
-# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/EDA_Course_Materials.zip
-# Set directory, load data and ggplot2 library
+# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/pseudo_facebook.tsv
+# Set directory, load data and ggplot2 package
 
 setwd("C:/Projects/UD651")
 list.files()

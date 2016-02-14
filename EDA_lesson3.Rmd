@@ -9,7 +9,7 @@ output:
 
 ### What to Do First
 ```{r}
-# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/EDA_Course_Materials.zip
+# https://s3.amazonaws.com/udacity-hosted-downloads/ud651/pseudo_facebook.tsv
 # Set directory, load data
 
 setwd("C:/Projects/UD651")
